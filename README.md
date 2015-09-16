@@ -7,6 +7,7 @@ First ensure you have **Django 1.8** and **python 3.4** installed. Add **_psd-to
 
 Enter the myproject directory via terminal/command prompt/shell then enter:
 
-$ python manage.py migrate
-$ python manage.py runserver
+>$ python manage.py migrate
+
+>$ python manage.py runserver
 
