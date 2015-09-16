@@ -11,3 +11,5 @@ Enter the myproject directory via terminal/command prompt/shell then enter:
 
 >$ python manage.py runserver
 
+Development server is started at >http://127.0.0.1:8000/
+
