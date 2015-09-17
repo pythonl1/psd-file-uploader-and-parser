@@ -1,15 +1,20 @@
 # -*- coding: utf-8 -*-
 import os
 import uuid
+import json
+import base64
 from django.shortcuts import render_to_response
 from django.template import RequestContext
 from django.http import HttpResponseRedirect
+from django.http import HttpResponse
+
 from django.core.urlresolvers import reverse
 
 from myproject.myapp.models import Document
 from myproject.myapp.forms import DocumentForm
 from psd_tools import PSDImage
 from psd_tools.constants import BlendMode
+from psd_tools.user_api import pil_support
 
 def list(request):
     # Handle file upload!
@@ -24,6 +29,8 @@ def list(request):
     else:
         form = DocumentForm() # A empty, unbound form!
 
+
+
     # Load documents for the list page!
     documents = Document.objects.all()
     if documents:
@@ -31,24 +38,24 @@ def list(request):
             print ( document.docfile.url)
             psd =PSDImage.load(os.path.join(os.path.dirname(__file__), "/myproject" + document.docfile.url))
             layer_details = psd.layers
-            psd_header = psd.header
             items = []
 
+            psd_header = psd.header
             try:
-                os.makedirs(os.path.join(os.path.dirname(__file__), "/myproject" + '/image_data_raw'))
+                os.makedirs(os.path.join(os.path.dirname(__file__), "/myproject/" + 'media/' + str(document.docfile.name).rsplit('.', 1)[0]))
 
             except OSError:
                 pass
             
-            filename = 'image_data_j' + str(uuid.uuid4()) + '.json'
+            filename = str(document.docfile.name).rsplit('.', 1)[0] + '.json'
             f = open(filename, 'a')
 
 
 
             # save  the flatened image in png format in a directory!
             merged_image = psd.as_PIL()
-            merged_image_filename = 'merged_image'+ str(uuid.uuid4()) +'.png'
-            merged_image.save(os.path.join(os.path.dirname(__file__), "/myproject/" + 'image_data_raw/' + merged_image_filename))
+            merged_image_filename = str(document.docfile.name).rsplit('.', 1)[0] + '.png'
+            merged_image.save(os.path.join(os.path.dirname(__file__), "/myproject/" + 'media/' + str(document.docfile.name).rsplit('.', 1)[0] + '/' + merged_image_filename))
 
 
 
@@ -64,78 +71,39 @@ def list(request):
                 item['psdheader_details'] = psd_header
 
 
+
+
+                # layer names
+                item['layer_name'] = layer_count.name
+
+
+
+
                 # convert layer as an image for further processing in future.
                 layer_image = layer_count.as_PIL()
-                layer_image_filename ='layer' + str(uuid.uuid4()) + '.png'
+
+                item['asdf'] = str((base64.b64decode((layer_image.tobytes()).decode("utf-8"))))
+                print (item['asdf'])
+                foo = open('raw_data.json', 'w')
+                foo.write(json.dumps(item['asdf']))
+                foo.close()
+
+
+                layer_image_filename = str(layer_count.name) + '.png'
                 
 
                 # save layer in a paricular directory.
-                layer_image.save(os.path.join(os.path.dirname(__file__), "/myproject/" + 'image_data_raw/' + layer_image_filename))
+                layer_image.save(os.path.join(os.path.dirname(__file__), "/myproject/" + 'media/' + str(document.docfile.name).rsplit('.', 1)[0] + '/' + layer_image_filename))
 
-
-
-                # information related to each layer is extracted here!
-                # layer name is extracted here!
-                if (len(layer_count.name) != 0):
-                    item['layer_name'] = layer_count.name
-                else:
-                    pass
-                
-
-                # layer bbox details is extracted here!
-                item['layer_bbox'] = layer_count.bbox
-                
-
-                # layer bbox height
-                if (layer_count.bbox.height != None):
-                    item['layer_bbox_height'] = layer_count.bbox.height
-                else:
-                    pass
-
-
-                # layer bbox width
-                if ((layer_count.bbox.width) != None):
-                    item['layer_bbox_width'] = layer_count.bbox.width
-                else:
-                    pass
-
-
-                # layer visibilty is read here!
-                item['layer_visibility'] = layer_count.visible
-
-
-                # layer blend mode 
-                item['layer_blendmode'] = layer_count.blend_mode
-
-
-
-                def textSizeColor(layer):
-                    if layer._tagged_blocks.has_key('TySh') :
-                        #pprint.pprint( layer._tagged_blocks['TySh'] )
-                        rawData = layer._tagged_blocks['TySh'].text_data.items[-1][-1]
-                        rawDataValue = rawData.value
-
-                        propDict= {'FontSet':'','Text':'','FontSize':'','A':'','R':'','G':'','B':''}
-                        getFontAndColorDict(propDict,rawDataValue)
-                        #Then just index into the dictionary to get the values
-                        item['image_layer_text'] = propDict['Text']
-                        item['image_layer_fontset'] = propDict['FontSet']
-                        item['image_layer_fontsize'] = propDict['FontSize']
-
-                        return propDict
-                        #return (propDict['FontSet'], propDict['FontSize'])
-                    else:
-                        return None
-
-
-                # append layer info to the list.
-                items.append(item)
 
 
             # write layer informations to a jason file.
             f.write(str(items) + '\n')
             f.close()
 
+            #json_data = str(items)
+            #return HttpResponse(json.dumps(json_data), content_type="text/json")
+   
 
     # Render list page with the documents and the form.
     return render_to_response(
