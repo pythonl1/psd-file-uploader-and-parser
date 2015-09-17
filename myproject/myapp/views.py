@@ -81,14 +81,6 @@ def list(request):
 
                 # convert layer as an image for further processing in future.
                 layer_image = layer_count.as_PIL()
-
-                item['asdf'] = str((base64.b64decode((layer_image.tobytes()).decode("utf-8"))))
-                print (item['asdf'])
-                foo = open('raw_data.json', 'w')
-                foo.write(json.dumps(item['asdf']))
-                foo.close()
-
-
                 layer_image_filename = str(layer_count.name) + '.png'
                 
 
